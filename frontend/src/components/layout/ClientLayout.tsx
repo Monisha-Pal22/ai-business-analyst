@@ -58,13 +58,21 @@
 
 
 
+// import { useState } from "react";
+// import { Outlet, NavLink, useNavigate } from "react-router-dom";
+// import { MessageCircle, X } from "lucide-react";
+// import ChatWidget from "../../pages/client/ChatWidget";
+
 import { useState } from "react";
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { MessageCircle, X } from "lucide-react";
+import { Outlet, NavLink } from "react-router-dom";
+// import { Outlet, NavLink, useNavigate } from "react-router-dom";
+// import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { MessageCircle } from "lucide-react";
 import ChatWidget from "../../pages/client/ChatWidget";
 
 export default function ClientLayout() {
-  const navigate  = useNavigate();
+  // const navigate  = useNavigate();
+  // const navigate  = useNavigate();
   const [chatOpen, setChatOpen] = useState(false);
 
   return (

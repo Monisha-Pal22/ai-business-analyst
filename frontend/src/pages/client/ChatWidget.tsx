@@ -195,7 +195,8 @@ import { useState, useRef, useEffect } from "react";
 import { sendMessage } from "../../api/chat";
 import { getServices } from "../../api/services";
 import { scheduleMeeting } from "../../api/meetings";
-import { Send, Mic, Paperclip, X, Minus } from "lucide-react";
+// import { Send, Mic, Paperclip, X, Minus } from "lucide-react";
+import { Send, Mic, Paperclip, X } from "lucide-react";
 
 interface Msg {
   role: "user" | "bot";
