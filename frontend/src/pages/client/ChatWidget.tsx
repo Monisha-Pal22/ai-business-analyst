@@ -240,49 +240,111 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // const send = async (customText?: string) => {
   const send = async (customText?: string) => {
-    const text = customText || input.trim();
-    if (!text || loading) return;
-    setMessages((m) => [...m, { role: "user", text }]);
-    setInput("");
-    setLoading(true);
-    try {
-      const res = await sendMessage(text, sessionId);
-      setSessionId(res.data.session_id);
-      const reply = res.data.reply;
+  const text = customText || input.trim();
+  if (!text || loading) return;
+  setMessages((m) => [...m, { role: "user", text }]);
+  setInput("");
+  setLoading(true);
+  try {
+    const res = await sendMessage(text, sessionId);
+    setSessionId(res.data.session_id);
+    const reply = res.data.reply;
 
-      // Check if response contains service cards trigger
-      if (reply.includes("[SERVICES_CARD]") || text.toLowerCase().includes("service") || text.toLowerCase().includes("what do you offer")) {
-        const cleanReply = reply.replace("[SERVICES_CARD]", "").trim();
-        setMessages((m) => [...m, {
-          role: "bot",
-          text: cleanReply || "Here are our available services:",
-          cards: services
-        }]);
-      } else {
-        // Check if meeting booking is mentioned
-        if (reply.toLowerCase().includes("schedule") || reply.toLowerCase().includes("meeting") || reply.toLowerCase().includes("book")) {
-          setShowMeetForm(true);
-        }
-        setMessages((m) => [...m, { role: "bot", text: reply }]);
+    if (
+      reply.includes("[SERVICES_CARD]") ||
+      text.toLowerCase().includes("service") ||
+      text.toLowerCase().includes("what do you offer") ||
+      text.toLowerCase().includes("pricing") ||
+      text.toLowerCase().includes("price")
+    ) {
+      const cleanReply = reply.replace("[SERVICES_CARD]", "").trim();
+      setMessages((m) => [...m, {
+        role: "bot",
+        text: cleanReply || "Here are our available services:",
+        cards: services
+      }]);
+    } else {
+      if (
+        reply.toLowerCase().includes("meeting") ||
+        reply.toLowerCase().includes("schedule") ||
+        reply.toLowerCase().includes("book")
+      ) {
+        setShowMeetForm(true);
       }
-    } catch {
-      setMessages((m) => [...m, { role: "bot", text: "Sorry, I'm having trouble connecting. Please try again in a moment." }]);
-    } finally {
-      setLoading(false);
+      setMessages((m) => [...m, { role: "bot", text: reply }]);
     }
-  };
+  } catch {
+    setMessages((m) => [...m, {
+      role: "bot",
+      text: "Sorry, I am having trouble connecting. Please try again."
+    }]);
+  } finally {
+    setLoading(false);
+  }
+};
+  //   const text = customText || input.trim();
+  //   if (!text || loading) return;
+  //   setMessages((m) => [...m, { role: "user", text }]);
+  //   setInput("");
+  //   setLoading(true);
+  //   try {
+  //     const res = await sendMessage(text, sessionId);
+  //     setSessionId(res.data.session_id);
+  //     const reply = res.data.reply;
+
+  //     // Check if response contains service cards trigger
+  //     if (reply.includes("[SERVICES_CARD]") || text.toLowerCase().includes("service") || text.toLowerCase().includes("what do you offer")) {
+  //       const cleanReply = reply.replace("[SERVICES_CARD]", "").trim();
+  //       setMessages((m) => [...m, {
+  //         role: "bot",
+  //         text: cleanReply || "Here are our available services:",
+  //         cards: services
+  //       }]);
+  //     } else {
+  //       // Check if meeting booking is mentioned
+  //       if (reply.toLowerCase().includes("schedule") || reply.toLowerCase().includes("meeting") || reply.toLowerCase().includes("book")) {
+  //         setShowMeetForm(true);
+  //       }
+  //       setMessages((m) => [...m, { role: "bot", text: reply }]);
+  //     }
+  //   } catch {
+  //     setMessages((m) => [...m, { role: "bot", text: "Sorry, I'm having trouble connecting. Please try again in a moment." }]);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  // const handleVoice = () => {
+  //   const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  //   if (!SR) { alert("Voice not supported in this browser."); return; }
+  //   const recognition = new SR();
+  //   recognition.lang     = "en-US";
+  //   recognition.onstart  = () => setIsListening(true);
+  //   recognition.onend    = () => setIsListening(false);
+  //   recognition.onresult = (e: any) => setInput(e.results[0][0].transcript);
+  //   recognition.start();
+  // };
 
   const handleVoice = () => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { alert("Voice not supported in this browser."); return; }
-    const recognition = new SR();
-    recognition.lang     = "en-US";
-    recognition.onstart  = () => setIsListening(true);
-    recognition.onend    = () => setIsListening(false);
-    recognition.onresult = (e: any) => setInput(e.results[0][0].transcript);
-    recognition.start();
+  const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  if (!SR) { alert("Voice not supported in this browser."); return; }
+  const recognition = new SR();
+  recognition.lang     = "en-US";
+  recognition.onstart  = () => setIsListening(true);
+  recognition.onend    = () => setIsListening(false);
+  recognition.onresult = (e: any) => {
+    const transcript = e.results[0][0].transcript;
+    setInput(transcript);
+    // Show confirmation message
+    setMessages((m) => [...m, {
+      role: "bot",
+      text: `I heard: "${transcript}" — is that correct? Press Send to confirm or edit above.`
+    }]);
   };
+  recognition.start();
+};
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

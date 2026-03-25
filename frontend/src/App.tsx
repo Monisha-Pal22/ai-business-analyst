@@ -212,7 +212,9 @@ import ChatWidget    from "./pages/client/ChatWidget";
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token);
   const role  = useAuthStore((s) => s.role);
-  if (!token || role !== "admin") return <Navigate to="/admin/login" />;
+  // if (!token || role !== "admin") return <Navigate to="/admin/login" />;
+  // if (!token || !role) return <Navigate to="/admin/login" />;
+  if (!token || !role) return <Navigate to="/admin/login" />;
   return <>{children}</>;
 }
 
