@@ -1,4 +1,4 @@
-import api from "./config";
+import api from "./config1";
 
 export const adminLogin = (email: string, password: string) =>
   api.post("/admin/login",

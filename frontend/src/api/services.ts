@@ -1,4 +1,4 @@
-import api from "./config";
+import api from "./config1";
 
 export const getServices   = ()                        => api.get("/services/");
 export const createService = (data: object)            => api.post("/admin/services/create", data);

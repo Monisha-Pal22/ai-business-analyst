@@ -1,4 +1,4 @@
-import api from "./config";
+import api from "./config1";
 
 export const getKPIs           = () => api.get("/analytics/kpis");
 export const getWeeklySummary  = () => api.get("/analytics/weekly-summary");

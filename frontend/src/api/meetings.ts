@@ -1,4 +1,4 @@
-import api from "./config";
+import api from "./config1";
 
 export const scheduleMeeting = (data: {
   client_name: string; client_email: string;

@@ -1,4 +1,4 @@
-import api from "./config";
+import api from "./config1";
 
 export const sendMessage    = (message: string, session_id?: string) =>
   api.post("/chat/message", { message, session_id });
