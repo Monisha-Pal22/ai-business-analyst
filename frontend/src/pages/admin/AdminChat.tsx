@@ -331,54 +331,211 @@
 
 
 
+// import { useState } from "react";
+// import { adminChat } from "../../api/chat";
+// import { Send } from "lucide-react";
+
+// interface Msg { role: "user" | "ai"; text: string; table?: TableRow[]; }
+// interface TableRow { metric: string; value: string; status: string; }
+
+// function parseTable(text: string): { clean: string; rows: TableRow[] } {
+//   const rows: TableRow[] = [];
+//   const tableMatch = text.match(/\[TABLE_START\]([\s\S]*?)\[TABLE_END\]/);
+//   if (tableMatch) {
+//     const lines = tableMatch[1].trim().split('\n').filter(l => l.trim() && !l.includes('Metric | Value'));
+//     lines.forEach(line => {
+//       const parts = line.split('|').map(p => p.trim());
+//       if (parts.length >= 2) {
+//         rows.push({ metric: parts[0], value: parts[1], status: parts[2] || '' });
+//       }
+//     });
+//   }
+//   const clean = text.replace(/\[TABLE_START\][\s\S]*?\[TABLE_END\]/, '').trim();
+//   return { clean, rows };
+// }
+
+// const statusColor = (status: string) => {
+//   const s = status.toLowerCase();
+//   if (s.includes('excel') || s.includes('good')) return 'bg-green-100 text-green-700';
+//   if (s.includes('average') || s.includes('ok')) return 'bg-amber-100 text-amber-700';
+//   if (s.includes('attention') || s.includes('bad') || s.includes('poor')) return 'bg-red-100 text-red-700';
+//   return 'bg-slate-100 text-slate-600';
+// };
+
+// export default function AdminChat() {
+//   const [messages, setMessages] = useState<Msg[]>([
+//     { role: "ai", text: "Hello! I'm your logistics business analyst. Ask me about fleet performance, delivery trends, cost optimization, or revenue forecasts. I'll show you data in a clear table format." }
+//   ]);
+//   const [input,   setInput]   = useState("");
+//   const [loading, setLoading] = useState(false);
+
+//   const send = async () => {
+//     if (!input.trim() || loading) return;
+//     const text = input.trim();
+//     setMessages((m) => [...m, { role: "user", text }]);
+//     setInput("");
+//     setLoading(true);
+//     try {
+//       const res = await adminChat(text);
+//       const { clean, rows } = parseTable(res.data.reply);
+//       setMessages((m) => [...m, { role: "ai", text: clean, table: rows }]);
+//     } catch {
+//       setMessages((m) => [...m, { role: "ai", text: "Sorry, something went wrong. Please try again." }]);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const quickQueries = [
+//     "How is my business performing?",
+//     "Show fleet utilization data",
+//     "How can I reduce costs?",
+//     "What are delivery performance metrics?",
+//   ];
+
+//   return (
+//     <div className="p-6 h-screen flex flex-col">
+//       <div className="mb-4">
+//         <h1 className="text-2xl font-bold text-slate-800">AI Business Chat</h1>
+//         <p className="text-slate-400 text-sm mt-0.5">Internal analytics assistant — data shown as tables and cards</p>
+//       </div>
+
+//       <div className="flex-1 bg-white rounded-xl border border-slate-200 flex flex-col overflow-hidden">
+//         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+//           {messages.map((m, i) => (
+//             <div key={i} className={`flex gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+//               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${m.role === "ai" ? "bg-blue-100 text-blue-600" : "bg-slate-800 text-white"}`}>
+//                 {m.role === "ai" ? "AI" : "A"}
+//               </div>
+//               <div className="flex flex-col gap-2 max-w-3xl">
+//                 {m.text && (
+//                   <div className={`px-4 py-2.5 rounded-xl text-sm leading-relaxed ${m.role === "ai" ? "bg-white border border-slate-200 text-slate-600" : "bg-blue-600 text-white"}`}>
+//                     {m.text}
+//                   </div>
+//                 )}
+//                 {/* Analytics Table */}
+//                 {m.table && m.table.length > 0 && (
+//                   <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+//                     <div className="bg-slate-800 px-4 py-2">
+//                       <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Analytics Data</p>
+//                     </div>
+//                     <table className="w-full">
+//                       <thead className="bg-slate-50">
+//                         <tr>
+//                           <th className="text-left text-xs font-medium text-slate-400 px-4 py-2">Metric</th>
+//                           <th className="text-left text-xs font-medium text-slate-400 px-4 py-2">Value</th>
+//                           <th className="text-left text-xs font-medium text-slate-400 px-4 py-2">Status</th>
+//                         </tr>
+//                       </thead>
+//                       <tbody>
+//                         {m.table.map((row, j) => (
+//                           <tr key={j} className="border-t border-slate-50">
+//                             <td className="px-4 py-2 text-sm text-slate-600">{row.metric}</td>
+//                             <td className="px-4 py-2 text-sm font-semibold text-slate-800">{row.value}</td>
+//                             <td className="px-4 py-2">
+//                               {row.status && (
+//                                 <span className={`text-xs px-2 py-1 rounded-md font-medium ${statusColor(row.status)}`}>
+//                                   {row.status}
+//                                 </span>
+//                               )}
+//                             </td>
+//                           </tr>
+//                         ))}
+//                       </tbody>
+//                     </table>
+//                   </div>
+//                 )}
+//               </div>
+//             </div>
+//           ))}
+//           {loading && (
+//             <div className="flex gap-3">
+//               <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">AI</div>
+//               <div className="bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-sm text-slate-400">Analysing data...</div>
+//             </div>
+//           )}
+//         </div>
+
+//         {/* Quick queries */}
+//         {messages.length <= 1 && (
+//           <div className="px-4 py-3 flex gap-2 flex-wrap border-t border-slate-100 bg-slate-50">
+//             {quickQueries.map((q) => (
+//               <button key={q} onClick={() => { setInput(q); }}
+//                 className="text-xs bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-full hover:border-blue-400 hover:text-blue-600 transition-colors">
+//                 {q}
+//               </button>
+//             ))}
+//           </div>
+//         )}
+
+//         <div className="p-3 border-t border-slate-200 bg-white flex gap-2">
+//           <input value={input} onChange={(e) => setInput(e.target.value)}
+//             onKeyDown={(e) => e.key === "Enter" && send()}
+//             placeholder="Ask about fleet, revenue, deliveries, routes..."
+//             className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+//           <button onClick={send} disabled={loading}
+//             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
+//             <Send size={15} />
+//           </button>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
+
+
+
+
+
+
+
 import { useState } from "react";
 import { adminChat } from "../../api/chat";
 import { Send } from "lucide-react";
 
-interface Msg { role: "user" | "ai"; text: string; table?: TableRow[]; }
 interface TableRow { metric: string; value: string; status: string; }
+interface Msg { role: "user" | "ai"; text: string; table?: TableRow[]; }
 
 function parseTable(text: string): { clean: string; rows: TableRow[] } {
   const rows: TableRow[] = [];
-  const tableMatch = text.match(/\[TABLE_START\]([\s\S]*?)\[TABLE_END\]/);
-  if (tableMatch) {
-    const lines = tableMatch[1].trim().split('\n').filter(l => l.trim() && !l.includes('Metric | Value'));
+  const match = text.match(/\[TABLE_START\]([\s\S]*?)\[TABLE_END\]/);
+  if (match) {
+    const lines = match[1].trim().split('\n').filter(l => l.trim() && !l.includes('Metric | Value'));
     lines.forEach(line => {
       const parts = line.split('|').map(p => p.trim());
-      if (parts.length >= 2) {
-        rows.push({ metric: parts[0], value: parts[1], status: parts[2] || '' });
-      }
+      if (parts.length >= 2) rows.push({ metric: parts[0], value: parts[1], status: parts[2] || '' });
     });
   }
   const clean = text.replace(/\[TABLE_START\][\s\S]*?\[TABLE_END\]/, '').trim();
   return { clean, rows };
 }
 
-const statusColor = (status: string) => {
-  const s = status.toLowerCase();
-  if (s.includes('excel') || s.includes('good')) return 'bg-green-100 text-green-700';
-  if (s.includes('average') || s.includes('ok')) return 'bg-amber-100 text-amber-700';
-  if (s.includes('attention') || s.includes('bad') || s.includes('poor')) return 'bg-red-100 text-red-700';
+const statusColor = (s: string) => {
+  const sl = s.toLowerCase();
+  if (sl.includes('excel') || sl.includes('great')) return 'bg-green-100 text-green-700';
+  if (sl.includes('good')) return 'bg-blue-100 text-blue-700';
+  if (sl.includes('average') || sl.includes('ok')) return 'bg-amber-100 text-amber-700';
+  if (sl.includes('attention') || sl.includes('poor') || sl.includes('bad')) return 'bg-red-100 text-red-700';
   return 'bg-slate-100 text-slate-600';
 };
 
 export default function AdminChat() {
   const [messages, setMessages] = useState<Msg[]>([
-    { role: "ai", text: "Hello! I'm your logistics business analyst. Ask me about fleet performance, delivery trends, cost optimization, or revenue forecasts. I'll show you data in a clear table format." }
+    { role: "ai", text: "Hello! I'm your AI business analyst. I can check today's meetings, analyse your business performance, and give you actionable recommendations. What would you like to know?" }
   ]);
   const [input,   setInput]   = useState("");
   const [loading, setLoading] = useState(false);
 
-  const send = async () => {
-    if (!input.trim() || loading) return;
-    const text = input.trim();
+  const send = async (customText?: string) => {
+    const text = customText || input.trim();
+    if (!text || loading) return;
     setMessages((m) => [...m, { role: "user", text }]);
     setInput("");
     setLoading(true);
     try {
       const res = await adminChat(text);
       const { clean, rows } = parseTable(res.data.reply);
-      setMessages((m) => [...m, { role: "ai", text: clean, table: rows }]);
+      setMessages((m) => [...m, { role: "ai", text: clean, table: rows.length > 0 ? rows : undefined }]);
     } catch {
       setMessages((m) => [...m, { role: "ai", text: "Sorry, something went wrong. Please try again." }]);
     } finally {
@@ -387,17 +544,18 @@ export default function AdminChat() {
   };
 
   const quickQueries = [
+    "Do I have any meetings today?",
     "How is my business performing?",
-    "Show fleet utilization data",
+    "What needs my attention right now?",
+    "Show me delivery performance data",
     "How can I reduce costs?",
-    "What are delivery performance metrics?",
   ];
 
   return (
     <div className="p-6 h-screen flex flex-col">
       <div className="mb-4">
-        <h1 className="text-2xl font-bold text-slate-800">AI Business Chat</h1>
-        <p className="text-slate-400 text-sm mt-0.5">Internal analytics assistant — data shown as tables and cards</p>
+        <h1 className="text-2xl font-bold text-slate-800">AI Business Analyst</h1>
+        <p className="text-slate-400 text-sm mt-0.5">Check meetings, analyse business data, get recommendations</p>
       </div>
 
       <div className="flex-1 bg-white rounded-xl border border-slate-200 flex flex-col overflow-hidden">
@@ -413,11 +571,11 @@ export default function AdminChat() {
                     {m.text}
                   </div>
                 )}
-                {/* Analytics Table */}
                 {m.table && m.table.length > 0 && (
                   <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                    <div className="bg-slate-800 px-4 py-2">
-                      <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Analytics Data</p>
+                    <div className="bg-slate-800 px-4 py-2 flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                      <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Business Analytics</p>
                     </div>
                     <table className="w-full">
                       <thead className="bg-slate-50">
@@ -429,15 +587,11 @@ export default function AdminChat() {
                       </thead>
                       <tbody>
                         {m.table.map((row, j) => (
-                          <tr key={j} className="border-t border-slate-50">
-                            <td className="px-4 py-2 text-sm text-slate-600">{row.metric}</td>
-                            <td className="px-4 py-2 text-sm font-semibold text-slate-800">{row.value}</td>
-                            <td className="px-4 py-2">
-                              {row.status && (
-                                <span className={`text-xs px-2 py-1 rounded-md font-medium ${statusColor(row.status)}`}>
-                                  {row.status}
-                                </span>
-                              )}
+                          <tr key={j} className="border-t border-slate-50 hover:bg-slate-50 transition-colors">
+                            <td className="px-4 py-2.5 text-sm text-slate-600">{row.metric}</td>
+                            <td className="px-4 py-2.5 text-sm font-semibold text-slate-800">{row.value}</td>
+                            <td className="px-4 py-2.5">
+                              {row.status && <span className={`text-xs px-2 py-1 rounded-md font-medium ${statusColor(row.status)}`}>{row.status}</span>}
                             </td>
                           </tr>
                         ))}
@@ -456,11 +610,10 @@ export default function AdminChat() {
           )}
         </div>
 
-        {/* Quick queries */}
         {messages.length <= 1 && (
           <div className="px-4 py-3 flex gap-2 flex-wrap border-t border-slate-100 bg-slate-50">
             {quickQueries.map((q) => (
-              <button key={q} onClick={() => { setInput(q); }}
+              <button key={q} onClick={() => send(q)}
                 className="text-xs bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-full hover:border-blue-400 hover:text-blue-600 transition-colors">
                 {q}
               </button>
@@ -469,11 +622,10 @@ export default function AdminChat() {
         )}
 
         <div className="p-3 border-t border-slate-200 bg-white flex gap-2">
-          <input value={input} onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send()}
-            placeholder="Ask about fleet, revenue, deliveries, routes..."
+          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()}
+            placeholder="Ask about meetings, performance, costs, recommendations..."
             className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <button onClick={send} disabled={loading}
+          <button onClick={() => send()} disabled={loading}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
             <Send size={15} />
           </button>
