@@ -352,12 +352,23 @@ def extract_user_data(text: str) -> dict:
 def extract_booking(text: str) -> dict:
     match = re.search(r'\[BOOK_MEETING:([^:]+):([^:]+):([^\]]+)\]', text)
     if match:
-        return {
-            'name':     match.group(1).strip(),
-            'email':    match.group(2).strip(),
-            'datetime': match.group(3).strip()
-        }
+        name = match.group(1).strip()
+        email = match.group(2).strip()
+        datetime_str = match.group(3).strip()
+        # Clean any leftover tags from name
+        name = re.sub(r'\[.*?\]', '', name).strip()
+        return {'name': name, 'email': email, 'datetime': datetime_str}
     return {}
+
+# def extract_booking(text: str) -> dict:
+#     match = re.search(r'\[BOOK_MEETING:([^:]+):([^:]+):([^\]]+)\]', text)
+#     if match:
+#         return {
+#             'name':     match.group(1).strip(),
+#             'email':    match.group(2).strip(),
+#             'datetime': match.group(3).strip()
+#         }
+#     return {}
 
 
 def clean_reply(text: str) -> str:
