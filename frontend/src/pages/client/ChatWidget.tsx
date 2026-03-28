@@ -1580,6 +1580,7 @@ import { Send, Mic, Paperclip, X } from "lucide-react";
 
 interface Msg { role: "user" | "bot"; text: string; cards?: Service[]; }
 interface Service { id: number; title: string; description: string; pricing: string; features: string; }
+// interface Props { isPopup?: boolean; onClose?: () => void; }
 interface Props { isPopup?: boolean; onClose?: () => void; }
 
 export default function ChatWidget({ isPopup = false, onClose }: Props) {
