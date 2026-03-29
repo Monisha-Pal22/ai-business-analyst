@@ -559,6 +559,193 @@
 
 
 # app/api/admin.py - fixed version with working admin chat
+# from fastapi import APIRouter, Depends, HTTPException, Request
+# from fastapi.security import OAuth2PasswordRequestForm
+# from pydantic import BaseModel
+# from sqlalchemy.orm import Session
+# from app.database.connection import get_db
+# from app.database.models import AdminUser, Service, ChatLog, AuditLog, Meeting
+# from app.utils.auth import hash_password, verify_password, create_access_token, get_current_admin
+# from typing import Optional
+# from datetime import datetime, date
+
+# router = APIRouter()
+
+# ROLE_HIERARCHY = {"analyst": 1, "manager": 2, "superadmin": 3}
+
+# def require_role(minimum_role: str):
+#     def checker(current_admin: dict = Depends(get_current_admin)):
+#         admin_role  = current_admin.get("role", "analyst")
+#         admin_level = ROLE_HIERARCHY.get(admin_role, 0)
+#         need_level  = ROLE_HIERARCHY.get(minimum_role, 99)
+#         if admin_level < need_level:
+#             raise HTTPException(status_code=403, detail=f"Access denied. '{minimum_role}' role required.")
+#         return current_admin
+#     return checker
+
+# def write_audit(db, admin_email, action, target="", detail="", ip_address="", admin_id=None):
+#     try:
+#         log = AuditLog(
+#             admin_id=admin_id, admin_email=admin_email,
+#             action=action, target=target, detail=detail, ip_address=ip_address
+#         )
+#         db.add(log)
+#         db.commit()
+#     except Exception:
+#         pass
+
+# @router.post("/login")
+# def admin_login(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+#     admin = db.query(AdminUser).filter(AdminUser.email == form.username).first()
+#     if not admin or not verify_password(form.password, admin.password):
+#         write_audit(db=db, admin_email=form.username, action="LOGIN_FAILED",
+#                    ip_address=request.client.host if request.client else "")
+#         raise HTTPException(status_code=401, detail="Wrong email or password")
+#     token = create_access_token({"sub": admin.email, "role": admin.role, "admin_id": admin.id})
+#     write_audit(db=db, admin_id=admin.id, admin_email=admin.email, action="LOGIN",
+#                ip_address=request.client.host if request.client else "")
+#     return {"access_token": token, "token_type": "bearer", "role": admin.role}
+
+# class AdminCreate(BaseModel):
+#     name: str; email: str; password: str; role: Optional[str] = "analyst"
+
+# @router.post("/register")
+# def register_admin(data: AdminCreate, db: Session = Depends(get_db)):
+#     existing = db.query(AdminUser).filter(AdminUser.email == data.email).first()
+#     if existing:
+#         raise HTTPException(status_code=400, detail="Email already registered")
+#     admin = AdminUser(
+#         name=data.name, email=data.email,
+#         password=hash_password(data.password), role=data.role
+#     )
+#     db.add(admin)
+#     db.commit()
+#     return {"message": f"Admin {data.name} created successfully"}
+
+# class ServiceCreate(BaseModel):
+#     title: str; description: str
+#     industry: Optional[str] = "Logistics"
+#     pricing: Optional[str] = "Contact us"
+#     features: Optional[str] = ""
+
+# @router.post("/services/create")
+# def create_service(request: Request, data: ServiceCreate, db: Session = Depends(get_db),
+#                    current_admin=Depends(require_role("manager"))):
+#     service = Service(**data.dict())
+#     db.add(service)
+#     db.commit()
+#     db.refresh(service)
+#     write_audit(db=db, admin_email=current_admin.get("sub"), action="CREATE_SERVICE",
+#                target=f"service:{service.id}", detail=f"Title: {data.title}",
+#                ip_address=request.client.host if request.client else "")
+#     return {"message": "Service created", "id": service.id}
+
+# @router.put("/services/{service_id}")
+# def update_service(request: Request, service_id: int, data: ServiceCreate,
+#                    db: Session = Depends(get_db), current_admin=Depends(require_role("manager"))):
+#     service = db.query(Service).filter(Service.id == service_id).first()
+#     if not service:
+#         raise HTTPException(status_code=404, detail="Service not found")
+#     for key, value in data.dict().items():
+#         setattr(service, key, value)
+#     db.commit()
+#     write_audit(db=db, admin_email=current_admin.get("sub"), action="UPDATE_SERVICE",
+#                target=f"service:{service_id}", ip_address=request.client.host if request.client else "")
+#     return {"message": "Service updated"}
+
+# @router.delete("/services/{service_id}")
+# def delete_service(request: Request, service_id: int, db: Session = Depends(get_db),
+#                    current_admin=Depends(require_role("superadmin"))):
+#     service = db.query(Service).filter(Service.id == service_id).first()
+#     if not service:
+#         raise HTTPException(status_code=404, detail="Service not found")
+#     service.is_active = False
+#     db.commit()
+#     write_audit(db=db, admin_email=current_admin.get("sub"), action="DELETE_SERVICE",
+#                target=f"service:{service_id}", detail=f"Soft-deleted: {service.title}",
+#                ip_address=request.client.host if request.client else "")
+#     return {"message": "Service deactivated"}
+
+# class AdminChatRequest(BaseModel):
+#     message: str
+
+# @router.post("/chat")
+# def admin_chat(req: AdminChatRequest, db: Session = Depends(get_db),
+#                current_admin=Depends(require_role("analyst"))):
+#     try:
+#         from app.chatbot.engine import get_ai_response
+        
+#         # Check for meeting queries
+#         message_lower = req.message.lower()
+#         extra_context = ""
+        
+#         if any(word in message_lower for word in ["meeting", "today", "schedule", "appointment"]):
+#             today = date.today()
+#             meetings = db.query(Meeting).filter(
+#                 Meeting.datetime >= datetime.combine(today, datetime.min.time()),
+#                 Meeting.datetime <  datetime.combine(today, datetime.max.time()),
+#                 Meeting.status == "scheduled"
+#             ).all()
+#             if meetings:
+#                 meeting_list = "\n".join([
+#                     f"- {m.client_name} ({m.client_email}) at {m.datetime.strftime('%H:%M')}"
+#                     for m in meetings
+#                 ])
+#                 extra_context = f"\n\nToday's meetings:\n{meeting_list}"
+#             else:
+#                 extra_context = "\n\nNo meetings scheduled for today."
+
+#         # Get business stats for context
+#         total_meetings = db.query(Meeting).count()
+#         total_services = db.query(Service).filter(Service.is_active == True).count()
+#         total_chats    = db.query(ChatLog).filter(ChatLog.chat_type == "client").count()
+        
+#         stats_context = f"\n\nCurrent business stats: {total_meetings} total meetings, {total_services} active services, {total_chats} client chat sessions."
+        
+#         full_message = req.message + extra_context + stats_context
+#         reply = get_ai_response(full_message, chat_type="admin")
+        
+#         log = ChatLog(message=req.message, response=reply, chat_type="admin")
+#         db.add(log)
+#         db.commit()
+        
+#         return {"reply": reply}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
+# @router.get("/analytics/report")
+# def get_analytics_report(current_admin=Depends(require_role("analyst")), db: Session = Depends(get_db)):
+#     total_meetings   = db.query(Meeting).count()
+#     pending_meetings = db.query(Meeting).filter(Meeting.status == "scheduled").count()
+#     total_services   = db.query(Service).filter(Service.is_active == True).count()
+#     total_chats      = db.query(ChatLog).filter(ChatLog.chat_type == "client").count()
+#     return {
+#         "total_meetings":     total_meetings,
+#         "pending_meetings":   pending_meetings,
+#         "total_services":     total_services,
+#         "total_client_chats": total_chats,
+#     }
+
+# @router.get("/audit-logs")
+# def get_audit_logs(limit: int = 100, current_admin=Depends(require_role("analyst")),
+#                    db: Session = Depends(get_db)):
+#     logs = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit).all()
+#     return [
+#         {
+#             "id": l.id, "admin_email": l.admin_email, "action": l.action,
+#             "target": l.target, "detail": l.detail,
+#             "ip_address": l.ip_address, "timestamp": l.timestamp,
+#         }
+#         for l in logs
+#     ]
+
+
+
+
+
+
+
+# app/api/admin.py - fixed version with working admin chat
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel

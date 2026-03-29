@@ -1746,6 +1746,7 @@
 
 
 
+
 import { useState, useRef, useEffect } from "react";
 import { sendMessage } from "../../api/chat";
 import { getServices } from "../../api/services";
@@ -1764,12 +1765,11 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
   const [loading,     setLoading]     = useState(false);
   const [services,    setServices]    = useState<Service[]>([]);
   const [isListening, setIsListening] = useState(false);
-  const [shownCards,  setShownCards]  = useState(false);
+  const [cardsShown,  setCardsShown]  = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef   = useRef<HTMLInputElement>(null);
 
-  // useEffect(() => { getServices().then((r) => setServices(r.data)).catch(() => {}); }, []);
-  useEffect(() => { getServices().then((r: { data: Service[] }) => setServices(r.data)).catch(() => {}); }, []);
+  useEffect(() => { getServices().then((r: any) => setServices(r.data)).catch(() => {}); }, []);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   const send = async (customText?: string) => {
@@ -1788,20 +1788,19 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
         text.toLowerCase().includes("service") ||
         text.toLowerCase().includes("offer") ||
         text.toLowerCase().includes("price") ||
-        text.toLowerCase().includes("what do you do") ||
-        text.toLowerCase().includes("options");
+        text.toLowerCase().includes("what do you");
 
-      // Only show cards ONCE per session
-      if (isServiceQuery && services.length > 0 && !shownCards) {
+      if (isServiceQuery && services.length > 0 && !cardsShown) {
+        setCardsShown(true);
         const cleanReply = reply.replace("[SERVICES_CARD]", "").trim();
-        setShownCards(true);
         setMessages((m) => [...m, {
           role: "bot",
           text: cleanReply || "Here are our available services:",
           cards: services
         }]);
       } else {
-        setMessages((m) => [...m, { role: "bot", text: reply.replace("[SERVICES_CARD]", "").trim() }]);
+        const cleanReply = reply.replace("[SERVICES_CARD]", "").trim();
+        setMessages((m) => [...m, { role: "bot", text: cleanReply }]);
       }
     } catch {
       setMessages((m) => [...m, { role: "bot", text: "Sorry, having trouble connecting. Please try again." }]);
@@ -1850,7 +1849,6 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
       className={`flex flex-col bg-white ${isPopup ? "rounded-2xl overflow-hidden" : "rounded-xl border border-slate-200 max-w-4xl mx-auto"}`}
       style={isPopup ? { width: "380px", height: "580px" } : { height: "600px" }}
     >
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-slate-900 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">AI</div>
@@ -1869,7 +1867,6 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
         )}
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
         {messages.map((m, i) => (
           <div key={i} className={`flex gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
@@ -1882,7 +1879,6 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
                   {m.text}
                 </div>
               )}
-              {/* Service Cards — shown only once */}
               {m.cards && m.cards.length > 0 && (
                 <div className="flex flex-col gap-2">
                   {m.cards.map((s) => (
@@ -1927,7 +1923,6 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Quick replies */}
       {messages.length <= 2 && (
         <div className="px-3 py-2 flex gap-2 flex-wrap bg-slate-50 border-t border-slate-100 flex-shrink-0">
           {quickReplies.map((q) => (
@@ -1939,7 +1934,6 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
         </div>
       )}
 
-      {/* Input */}
       <div className="p-3 border-t border-slate-200 bg-white flex gap-2 items-center flex-shrink-0">
         <input type="file" ref={fileRef} onChange={handleFile} className="hidden" />
         <button onClick={() => fileRef.current?.click()}
