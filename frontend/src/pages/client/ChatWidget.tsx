@@ -195,7 +195,7 @@
 
 
 
-import { useRef, useEffect, useReducer } from "react";
+ import { useRef, useEffect, useReducer } from "react";
 import { getServices } from "../../api/services";
 import { Send, Mic, Paperclip, X } from "lucide-react";
 import api from "../../api/config";
@@ -203,6 +203,7 @@ import api from "../../api/config";
 interface Msg { role: "user" | "bot"; text: string; cards?: Service[]; }
 interface Service { id: number; title: string; description: string; pricing: string; features: string; }
 interface Props { isPopup?: boolean; onClose?: () => void; }
+interface HistoryItem { role: string; content: string; }
 
 interface State {
   messages: Msg[];
@@ -220,7 +221,7 @@ type Action =
   | { type: "SET_LISTENING"; val: boolean };
 
 const init: State = {
-  messages: [{ role: "bot", text: "Hello! 👋 I'm Alexa, your LogiAI assistant. I can help you with our logistics services, book meetings, or answer any questions. How can I help you today?" }],
+  messages: [{ role: "bot", text: "Hello! 👋 I'm Alexa, your LogiAI assistant. How can I help you today? I can tell you about our services, help you book a meeting, or answer any logistics questions." }],
   input: "",
   loading: false,
   services: [],
@@ -229,13 +230,22 @@ const init: State = {
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case "ADD_MSG":      return { ...state, messages: [...state.messages, action.msg] };
-    case "SET_INPUT":    return { ...state, input: action.val };
-    case "SET_LOADING":  return { ...state, loading: action.val };
-    case "SET_SERVICES": return { ...state, services: action.val };
-    case "SET_LISTENING":return { ...state, isListening: action.val };
+    case "ADD_MSG":       return { ...state, messages: [...state.messages, action.msg] };
+    case "SET_INPUT":     return { ...state, input: action.val };
+    case "SET_LOADING":   return { ...state, loading: action.val };
+    case "SET_SERVICES":  return { ...state, services: action.val };
+    case "SET_LISTENING": return { ...state, isListening: action.val };
     default: return state;
   }
+}
+
+function cleanText(raw: string): string {
+  return raw
+    .replace(/\[SERVICES_CARD\]/g, "")
+    .replace(/\[LEAD_DATA:[^\]]*\]/g, "")
+    .replace(/\[USER_DATA:[^\]]*\]/g, "")
+    .replace(/\[BOOK_MEETING:[^\]]*\]/g, "")
+    .trim();
 }
 
 export default function ChatWidget({ isPopup = false, onClose }: Props) {
@@ -243,13 +253,13 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
   const { messages, input, loading, services, isListening } = state;
 
   const cardsShown   = useRef(false);
-  const historyRef   = useRef<{ role: string; content: string }[]>([]);
+  const historyRef   = useRef<HistoryItem[]>([]);
   const sessionIdRef = useRef<string>(crypto.randomUUID());
   const bottomRef    = useRef<HTMLDivElement>(null);
   const fileRef      = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    getServices().then((r:{ data: Service[] }) => dispatch({ type: "SET_SERVICES", val: r.data })).catch(() => {});
+    getServices().then((r) => dispatch({ type: "SET_SERVICES", val: r.data })).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -264,28 +274,24 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
     dispatch({ type: "SET_INPUT", val: "" });
     dispatch({ type: "SET_LOADING", val: true });
 
+    // Add to history BEFORE sending
     historyRef.current = [...historyRef.current, { role: "user", content: text }];
 
     try {
       const res = await api.post("/chat/message", {
         message:    text,
         session_id: sessionIdRef.current,
-        history:    historyRef.current.slice(-10),
+        history:    historyRef.current.slice(-16), // send last 16 messages = 8 turns
       });
 
-      const rawReply   = res.data.reply as string;
-      const cleanReply = rawReply
-        .replace(/\[SERVICES_CARD\]/g, "")
-        .replace(/\[LEAD_DATA:[^\]]+\]/g, "")
-        .replace(/\[USER_DATA:[^\]]+\]/g, "")
-        .replace(/\[BOOK_MEETING:[^\]]+\]/g, "")
-        .trim();
+      const rawReply   = (res.data.reply || "") as string;
+      const cleanReply = cleanText(rawReply);
+      const isService  = rawReply.includes("[SERVICES_CARD]");
 
+      // Add AI response to history
       historyRef.current = [...historyRef.current, { role: "assistant", content: cleanReply }];
 
-      const isServiceQuery = rawReply.includes("[SERVICES_CARD]");
-
-      if (isServiceQuery && services.length > 0 && !cardsShown.current) {
+      if (isService && services.length > 0 && !cardsShown.current) {
         cardsShown.current = true;
         dispatch({ type: "ADD_MSG", msg: { role: "bot", text: cleanReply, cards: services } });
       } else {
@@ -301,18 +307,16 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
   const handleVoice = () => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { alert("Voice not supported. Use Chrome."); return; }
-    // const recognition = new SR() as SpeechRecognition;
-    const recognition: any = new SR();
+    const recognition = new SR() as SpeechRecognition;
     recognition.lang           = "en-US";
     recognition.continuous     = false;
     recognition.interimResults = false;
     recognition.onstart  = () => dispatch({ type: "SET_LISTENING", val: true });
     recognition.onend    = () => dispatch({ type: "SET_LISTENING", val: false });
-    // recognition.onresult = (e: SpeechRecognitionEvent) => {
-    recognition.onresult = (e: any) => {
+    recognition.onresult = (e: SpeechRecognitionEvent) => {
       const t = e.results[0][0].transcript;
       dispatch({ type: "SET_INPUT", val: t });
-      dispatch({ type: "ADD_MSG", msg: { role: "bot", text: `🎤 I heard: "${t}" — correct? Press Send to confirm.` } });
+      dispatch({ type: "ADD_MSG", msg: { role: "bot", text: `🎤 I heard: "${t}" — correct? Press Send to confirm or edit above.` } });
     };
     recognition.start();
   };
@@ -321,14 +325,14 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
     const file = e.target.files?.[0];
     if (!file) return;
     dispatch({ type: "ADD_MSG", msg: { role: "user", text: `📎 ${file.name}` } });
-    dispatch({ type: "ADD_MSG", msg: { role: "bot",  text: `I received "${file.name}". May I know your name so I can arrange a follow-up?` } });
+    dispatch({ type: "ADD_MSG", msg: { role: "bot", text: `I received "${file.name}". May I know your name so I can arrange a follow-up?` } });
   };
 
   const quickReplies = [
     "What services do you offer?",
     "I need express delivery",
     "Book a meeting with your team",
-    "I need warehouse storage",
+    "I need fleet tracking",
   ];
 
   return (
@@ -336,7 +340,6 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
       className={`flex flex-col bg-white ${isPopup ? "rounded-2xl overflow-hidden shadow-2xl" : "rounded-xl border border-slate-200 max-w-4xl mx-auto"}`}
       style={isPopup ? { width: "380px", height: "580px" } : { height: "600px" }}
     >
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-slate-900 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">AI</div>
@@ -355,7 +358,6 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
         )}
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
         {messages.map((m, i) => (
           <div key={i} className={`flex gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
@@ -373,7 +375,7 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
                   {m.cards.map((s) => (
                     <div key={s.id}
                       className="bg-white border border-slate-200 rounded-xl p-3 hover:border-blue-300 transition-colors cursor-pointer"
-                      onClick={() => send(`I want to know more about ${s.title} and book it`)}>
+                      onClick={() => send(`I want to book ${s.title}`)}>
                       <div className="flex justify-between items-start mb-1">
                         <span className="text-sm font-semibold text-slate-800">{s.title}</span>
                         <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{s.pricing}</span>
@@ -396,7 +398,6 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
             </div>
           </div>
         ))}
-
         {loading && (
           <div className="flex gap-2">
             <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">AI</div>
@@ -412,7 +413,6 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Quick replies */}
       {messages.length <= 2 && (
         <div className="px-3 py-2 flex gap-2 flex-wrap bg-white border-t border-slate-100 flex-shrink-0">
           {quickReplies.map((q) => (
@@ -424,25 +424,21 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
         </div>
       )}
 
-      {/* Input */}
       <div className="p-3 border-t border-slate-200 bg-white flex gap-2 items-center flex-shrink-0">
         <input type="file" ref={fileRef} onChange={handleFile} className="hidden" />
         <button onClick={() => fileRef.current?.click()}
-          className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-400" title="Upload document">
+          className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-400">
           <Paperclip size={15} />
         </button>
         <button onClick={handleVoice}
-          className={`p-2 rounded-lg transition-colors ${isListening ? "bg-red-100 text-red-500 animate-pulse" : "hover:bg-slate-100 text-slate-400"}`}
-          title="Voice input">
+          className={`p-2 rounded-lg transition-colors ${isListening ? "bg-red-100 text-red-500 animate-pulse" : "hover:bg-slate-100 text-slate-400"}`}>
           <Mic size={15} />
         </button>
-        <input
-          value={input}
+        <input value={input}
           onChange={(e) => dispatch({ type: "SET_INPUT", val: e.target.value })}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
           placeholder="Type your message..."
-          className="flex-1 border border-slate-200 rounded-full px-4 py-2 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-400"
-        />
+          className="flex-1 border border-slate-200 rounded-full px-4 py-2 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-400" />
         <button onClick={() => send()} disabled={loading}
           className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors disabled:opacity-50">
           <Send size={15} />

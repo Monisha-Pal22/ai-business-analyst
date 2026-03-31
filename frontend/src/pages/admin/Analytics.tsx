@@ -4,7 +4,7 @@ import { getKPIs } from "../../api/analytics";
 export default function Analytics() {
   const [kpis, setKpis] = useState<any>(null);
 
-  useEffect(() => { getKPIs().then((r) => setKpis(r.data)).catch(() => {}); }, []);
+  useEffect(() => { getKPIs().then((r: any) => setKpis(r.data)).catch(() => {}); }, []);
 
   const k = kpis || {};
 
