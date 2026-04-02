@@ -815,74 +815,239 @@
 
 
 
+// import { useState, useRef, useEffect } from "react";
+// import { Send } from "lucide-react";
+// import api from "../../api/config";
+
+// interface TableRow { metric: string; value: string; status: string; }
+// interface Msg { role: "user" | "ai"; text: string; table?: TableRow[]; }
+
+// function parseResponse(text: string): { clean: string; rows: TableRow[] } {
+//   const rows: TableRow[] = [];
+//   const match = text.match(/\[TABLE_START\]([\s\S]*?)\[TABLE_END\]/);
+//   if (match) {
+//     const lines = match[1].trim().split('\n');
+//     for (const line of lines) {
+//       if (!line.trim()) continue;
+//       if (line.toLowerCase().includes('metric') && line.includes('|')) continue;
+//       const parts = line.split('|').map(p => p.trim());
+//       if (parts.length >= 2 && parts[0]) {
+//         rows.push({ metric: parts[0], value: parts[1] || '-', status: parts[2] || '' });
+//       }
+//     }
+//   }
+//   const clean = text
+//     .replace(/\[TABLE_START\][\s\S]*?\[TABLE_END\]/g, '')
+//     .trim();
+//   return { clean, rows };
+// }
+
+// const badgeColor = (s: string) => {
+//   const v = (s || '').toLowerCase();
+//   if (v.includes('good') || v.includes('excel')) return 'bg-green-100 text-green-700';
+//   if (v.includes('average') || v.includes('active')) return 'bg-blue-100 text-blue-700';
+//   if (v.includes('attention') || v.includes('follow') || v.includes('conflict')) return 'bg-red-100 text-red-700';
+//   return 'bg-slate-100 text-slate-600';
+// };
+
+// export default function AdminChat() {
+//   const [messages, setMessages] = useState<Msg[]>([
+//     { role: "ai", text: "Good morning! I'm Alexa, your business assistant. I can check today's meetings, show your business status, identify risks, and give you an action plan. What would you like to know?" }
+//   ]);
+//   const [input,   setInput]   = useState("");
+//   const [loading, setLoading] = useState(false);
+//   const bottomRef = useRef<HTMLDivElement>(null);
+
+//   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+//   const send = async (customText?: string) => {
+//     const text = customText || input.trim();
+//     if (!text || loading) return;
+//     setMessages(m => [...m, { role: "user", text }]);
+//     setInput("");
+//     setLoading(true);
+//     try {
+//       const res = await api.post("/admin/chat", { message: text });
+//       const { clean, rows } = parseResponse(res.data.reply || "");
+//       setMessages(m => [...m, { role: "ai", text: clean, table: rows.length > 0 ? rows : undefined }]);
+//     } catch (err: any) {
+//       const msg = err?.response?.data?.detail || "Something went wrong. Please try again.";
+//       setMessages(m => [...m, { role: "ai", text: msg }]);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const quickQueries = [
+//     "Give me today's business status",
+//     "Do I have any meetings today?",
+//     "What needs my attention right now?",
+//     "What should I focus on next 4 hours?",
+//     "Any risks I should know about?",
+//   ];
+
+//   return (
+//     <div className="p-6 h-screen flex flex-col">
+//       <div className="mb-4">
+//         <h1 className="text-2xl font-bold text-slate-800">AI Business Assistant</h1>
+//         <p className="text-slate-400 text-sm mt-0.5">Alexa — your personal business intelligence assistant</p>
+//       </div>
+
+//       <div className="flex-1 bg-white rounded-xl border border-slate-200 flex flex-col overflow-hidden">
+//         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+//           {messages.map((m, i) => (
+//             <div key={i} className={`flex gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+//               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${m.role === "ai" ? "bg-blue-100 text-blue-600" : "bg-slate-800 text-white"}`}>
+//                 {m.role === "ai" ? "AI" : "A"}
+//               </div>
+//               <div className="flex flex-col gap-2 max-w-3xl w-full">
+//                 {m.text && (
+//                   <div className={`px-4 py-2.5 rounded-xl text-sm leading-relaxed whitespace-pre-wrap ${m.role === "ai" ? "bg-white border border-slate-200 text-slate-600" : "bg-blue-600 text-white"}`}>
+//                     {m.text}
+//                   </div>
+//                 )}
+//                 {m.table && m.table.length > 0 && (
+//                   <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+//                     <div className="bg-slate-900 px-4 py-2.5 flex items-center gap-2">
+//                       <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+//                       <p className="text-xs font-semibold text-white uppercase tracking-wider">Business Analytics</p>
+//                     </div>
+//                     <div className="overflow-x-auto">
+//                       <table className="w-full">
+//                         <thead>
+//                           <tr className="bg-slate-50 border-b border-slate-100">
+//                             <th className="text-left text-xs font-semibold text-slate-500 px-4 py-2.5">Metric</th>
+//                             <th className="text-left text-xs font-semibold text-slate-500 px-4 py-2.5">Value</th>
+//                             <th className="text-left text-xs font-semibold text-slate-500 px-4 py-2.5">Status</th>
+//                           </tr>
+//                         </thead>
+//                         <tbody>
+//                           {m.table.map((row, j) => (
+//                             <tr key={j} className={`border-t border-slate-50 ${j % 2 === 0 ? "bg-white" : "bg-slate-50/50"}`}>
+//                               <td className="px-4 py-2.5 text-sm text-slate-600 font-medium">{row.metric}</td>
+//                               <td className="px-4 py-2.5 text-sm font-bold text-slate-800">{row.value}</td>
+//                               <td className="px-4 py-2.5">
+//                                 {row.status && (
+//                                   <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${badgeColor(row.status)}`}>
+//                                     {row.status}
+//                                   </span>
+//                                 )}
+//                               </td>
+//                             </tr>
+//                           ))}
+//                         </tbody>
+//                       </table>
+//                     </div>
+//                   </div>
+//                 )}
+//               </div>
+//             </div>
+//           ))}
+//           {loading && (
+//             <div className="flex gap-3">
+//               <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">AI</div>
+//               <div className="bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-sm text-slate-400 italic">
+//                 Analysing your business data...
+//               </div>
+//             </div>
+//           )}
+//           <div ref={bottomRef} />
+//         </div>
+
+//         {messages.length <= 1 && (
+//           <div className="px-4 py-3 flex gap-2 flex-wrap border-t border-slate-100 bg-white">
+//             {quickQueries.map((q) => (
+//               <button key={q} onClick={() => send(q)}
+//                 className="text-xs bg-slate-50 border border-slate-200 text-slate-600 px-3 py-1.5 rounded-full hover:border-blue-400 hover:text-blue-600 transition-colors">
+//                 {q}
+//               </button>
+//             ))}
+//           </div>
+//         )}
+
+//         <div className="p-3 border-t border-slate-200 bg-white flex gap-2">
+//           <input value={input} onChange={(e) => setInput(e.target.value)}
+//             onKeyDown={(e) => e.key === "Enter" && send()}
+//             placeholder="Ask about meetings, business status, leads, risks..."
+//             className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+//           <button onClick={() => send()} disabled={loading}
+//             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+//             <Send size={15} />
+//           </button>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
+
+
+
+
 import { useState, useRef, useEffect } from "react";
 import { Send } from "lucide-react";
 import api from "../../api/config";
 
-interface TableRow { metric: string; value: string; status: string; }
-interface Msg { role: "user" | "ai"; text: string; table?: TableRow[]; }
+interface Row { metric: string; value: string; status: string; }
+interface Msg { role: "user"|"ai"; text: string; table?: Row[]; }
 
-function parseResponse(text: string): { clean: string; rows: TableRow[] } {
-  const rows: TableRow[] = [];
-  const match = text.match(/\[TABLE_START\]([\s\S]*?)\[TABLE_END\]/);
-  if (match) {
-    const lines = match[1].trim().split('\n');
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      if (line.toLowerCase().includes('metric') && line.includes('|')) continue;
-      const parts = line.split('|').map(p => p.trim());
-      if (parts.length >= 2 && parts[0]) {
-        rows.push({ metric: parts[0], value: parts[1] || '-', status: parts[2] || '' });
-      }
-    }
+function parse(text: string): { clean: string; rows: Row[] } {
+  const rows: Row[] = [];
+  const m = text.match(/\[TABLE_START\]([\s\S]*?)\[TABLE_END\]/);
+  if(m){
+    m[1].trim().split('\n').forEach(line=>{
+      if(!line.trim()) return;
+      if(/metric.*value/i.test(line)) return;
+      const p = line.split('|').map(x=>x.trim());
+      if(p.length>=2 && p[0]) rows.push({metric:p[0], value:p[1]||'-', status:p[2]||''});
+    });
   }
-  const clean = text
-    .replace(/\[TABLE_START\][\s\S]*?\[TABLE_END\]/g, '')
-    .trim();
-  return { clean, rows };
+  return {
+    clean: text.replace(/\[TABLE_START\][\s\S]*?\[TABLE_END\]/g,'').trim(),
+    rows
+  };
 }
 
-const badgeColor = (s: string) => {
-  const v = (s || '').toLowerCase();
-  if (v.includes('good') || v.includes('excel')) return 'bg-green-100 text-green-700';
-  if (v.includes('average') || v.includes('active')) return 'bg-blue-100 text-blue-700';
-  if (v.includes('attention') || v.includes('follow') || v.includes('conflict')) return 'bg-red-100 text-red-700';
+const badge = (s: string) => {
+  const v = s.toLowerCase();
+  if(v.includes('excel')||v.includes('good')) return 'bg-green-100 text-green-700';
+  if(v.includes('average')||v.includes('active')) return 'bg-blue-100 text-blue-700';
+  if(v.includes('attention')||v.includes('follow')||v.includes('conflict')||v.includes('risk')) return 'bg-red-100 text-red-700';
   return 'bg-slate-100 text-slate-600';
 };
 
 export default function AdminChat() {
-  const [messages, setMessages] = useState<Msg[]>([
-    { role: "ai", text: "Good morning! I'm Alexa, your business assistant. I can check today's meetings, show your business status, identify risks, and give you an action plan. What would you like to know?" }
+  const [msgs, setMsgs] = useState<Msg[]>([
+    {role:"ai", text:"Good morning! I'm Alexa, your business assistant. I can check today's meetings, show business status, identify risks, and give you an action plan. What would you like to know?"}
   ]);
-  const [input,   setInput]   = useState("");
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const bottom = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(()=>{ bottom.current?.scrollIntoView({behavior:"smooth"}); },[msgs]);
 
-  const send = async (customText?: string) => {
-    const text = customText || input.trim();
-    if (!text || loading) return;
-    setMessages(m => [...m, { role: "user", text }]);
+  const send = async (txt?: string) => {
+    const text = txt || input.trim();
+    if(!text||loading) return;
+    setMsgs(m=>[...m,{role:"user",text}]);
     setInput("");
     setLoading(true);
     try {
-      const res = await api.post("/admin/chat", { message: text });
-      const { clean, rows } = parseResponse(res.data.reply || "");
-      setMessages(m => [...m, { role: "ai", text: clean, table: rows.length > 0 ? rows : undefined }]);
-    } catch (err: any) {
-      const msg = err?.response?.data?.detail || "Something went wrong. Please try again.";
-      setMessages(m => [...m, { role: "ai", text: msg }]);
+      const res = await api.post("/admin/chat",{message:text});
+      const {clean, rows} = parse(res.data.reply||"");
+      setMsgs(m=>[...m,{role:"ai", text:clean, table:rows.length>0?rows:undefined}]);
+    } catch(e: any) {
+      setMsgs(m=>[...m,{role:"ai",text: e?.response?.data?.detail||"Something went wrong. Please try again."}]);
     } finally {
       setLoading(false);
     }
   };
 
-  const quickQueries = [
+  const quick = [
     "Give me today's business status",
     "Do I have any meetings today?",
     "What needs my attention right now?",
     "What should I focus on next 4 hours?",
+    "Show me the leads pipeline",
     "Any risks I should know about?",
   ];
 
@@ -892,52 +1057,45 @@ export default function AdminChat() {
         <h1 className="text-2xl font-bold text-slate-800">AI Business Assistant</h1>
         <p className="text-slate-400 text-sm mt-0.5">Alexa — your personal business intelligence assistant</p>
       </div>
-
       <div className="flex-1 bg-white rounded-xl border border-slate-200 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
-          {messages.map((m, i) => (
-            <div key={i} className={`flex gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${m.role === "ai" ? "bg-blue-100 text-blue-600" : "bg-slate-800 text-white"}`}>
-                {m.role === "ai" ? "AI" : "A"}
+          {msgs.map((m,i)=>(
+            <div key={i} className={`flex gap-3 ${m.role==="user"?"flex-row-reverse":""}`}>
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${m.role==="ai"?"bg-blue-100 text-blue-600":"bg-slate-800 text-white"}`}>
+                {m.role==="ai"?"AI":"A"}
               </div>
               <div className="flex flex-col gap-2 max-w-3xl w-full">
                 {m.text && (
-                  <div className={`px-4 py-2.5 rounded-xl text-sm leading-relaxed whitespace-pre-wrap ${m.role === "ai" ? "bg-white border border-slate-200 text-slate-600" : "bg-blue-600 text-white"}`}>
+                  <div className={`px-4 py-2.5 rounded-xl text-sm leading-relaxed whitespace-pre-wrap ${m.role==="ai"?"bg-white border border-slate-200 text-slate-600":"bg-blue-600 text-white"}`}>
                     {m.text}
                   </div>
                 )}
-                {m.table && m.table.length > 0 && (
+                {m.table && m.table.length>0 && (
                   <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                     <div className="bg-slate-900 px-4 py-2.5 flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
                       <p className="text-xs font-semibold text-white uppercase tracking-wider">Business Analytics</p>
                     </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="bg-slate-50 border-b border-slate-100">
-                            <th className="text-left text-xs font-semibold text-slate-500 px-4 py-2.5">Metric</th>
-                            <th className="text-left text-xs font-semibold text-slate-500 px-4 py-2.5">Value</th>
-                            <th className="text-left text-xs font-semibold text-slate-500 px-4 py-2.5">Status</th>
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-100">
+                          <th className="text-left text-xs font-semibold text-slate-500 px-4 py-2.5">Metric</th>
+                          <th className="text-left text-xs font-semibold text-slate-500 px-4 py-2.5">Value</th>
+                          <th className="text-left text-xs font-semibold text-slate-500 px-4 py-2.5">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {m.table.map((row,j)=>(
+                          <tr key={j} className={`border-t border-slate-50 ${j%2===0?"bg-white":"bg-slate-50/50"}`}>
+                            <td className="px-4 py-2.5 text-sm text-slate-600 font-medium">{row.metric}</td>
+                            <td className="px-4 py-2.5 text-sm font-bold text-slate-800">{row.value}</td>
+                            <td className="px-4 py-2.5">
+                              {row.status && <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${badge(row.status)}`}>{row.status}</span>}
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {m.table.map((row, j) => (
-                            <tr key={j} className={`border-t border-slate-50 ${j % 2 === 0 ? "bg-white" : "bg-slate-50/50"}`}>
-                              <td className="px-4 py-2.5 text-sm text-slate-600 font-medium">{row.metric}</td>
-                              <td className="px-4 py-2.5 text-sm font-bold text-slate-800">{row.value}</td>
-                              <td className="px-4 py-2.5">
-                                {row.status && (
-                                  <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${badgeColor(row.status)}`}>
-                                    {row.status}
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
@@ -946,18 +1104,16 @@ export default function AdminChat() {
           {loading && (
             <div className="flex gap-3">
               <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">AI</div>
-              <div className="bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-sm text-slate-400 italic">
-                Analysing your business data...
-              </div>
+              <div className="bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-sm text-slate-400 italic">Analysing your business data...</div>
             </div>
           )}
-          <div ref={bottomRef} />
+          <div ref={bottom}/>
         </div>
 
-        {messages.length <= 1 && (
+        {msgs.length<=1 && (
           <div className="px-4 py-3 flex gap-2 flex-wrap border-t border-slate-100 bg-white">
-            {quickQueries.map((q) => (
-              <button key={q} onClick={() => send(q)}
+            {quick.map(q=>(
+              <button key={q} onClick={()=>send(q)}
                 className="text-xs bg-slate-50 border border-slate-200 text-slate-600 px-3 py-1.5 rounded-full hover:border-blue-400 hover:text-blue-600 transition-colors">
                 {q}
               </button>
@@ -966,13 +1122,13 @@ export default function AdminChat() {
         )}
 
         <div className="p-3 border-t border-slate-200 bg-white flex gap-2">
-          <input value={input} onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send()}
+          <input value={input} onChange={e=>setInput(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&send()}
             placeholder="Ask about meetings, business status, leads, risks..."
-            className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <button onClick={() => send()} disabled={loading}
+            className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+          <button onClick={()=>send()} disabled={loading}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50">
-            <Send size={15} />
+            <Send size={15}/>
           </button>
         </div>
       </div>
