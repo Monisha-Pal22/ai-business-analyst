@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { AxiosResponse } from "axios";
 import { getAllMeetings, updateMeetingStatus } from "../../api/meetings";
 
 interface Meeting { id: number; client_name: string; client_email: string; datetime: string; status: string; notes: string; meeting_link: string; }
@@ -14,7 +15,7 @@ export default function Meetings() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [filter,   setFilter]   = useState("all");
 
-  const load = () => getAllMeetings().then((r) => setMeetings(r.data)).catch(() => {});
+  const load = () => getAllMeetings().then((r: AxiosResponse<Meeting[]>) => setMeetings(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const handleStatus = async (id: number, status: string) => {

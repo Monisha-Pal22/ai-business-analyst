@@ -195,15 +195,31 @@
 
 
 
- import { useRef, useEffect, useReducer } from "react";
+import { useRef, useEffect, useReducer } from "react";
 import { getServices } from "../../api/services";
 import { Send, Mic, Paperclip, X } from "lucide-react";
 import api from "../../api/config";
+import type { AxiosResponse } from "axios";
 
 interface Msg { role: "user" | "bot"; text: string; cards?: Service[]; }
 interface Service { id: number; title: string; description: string; pricing: string; features: string; }
 interface Props { isPopup?: boolean; onClose?: () => void; }
 interface HistoryItem { role: string; content: string; }
+interface SpeechRecognitionAlternativeLike { transcript: string; }
+interface SpeechRecognitionResultLike { 0: SpeechRecognitionAlternativeLike; }
+interface SpeechRecognitionEventLike { results: ArrayLike<SpeechRecognitionResultLike>; }
+interface SpeechRecognitionLike extends EventTarget {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  start: () => void;
+}
+interface SpeechRecognitionConstructorLike {
+  new (): SpeechRecognitionLike;
+}
 
 interface State {
   messages: Msg[];
@@ -259,7 +275,9 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
   const fileRef      = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    getServices().then((r) => dispatch({ type: "SET_SERVICES", val: r.data })).catch(() => {});
+    getServices()
+      .then((r: AxiosResponse<Service[]>) => dispatch({ type: "SET_SERVICES", val: r.data }))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -305,15 +323,19 @@ export default function ChatWidget({ isPopup = false, onClose }: Props) {
   };
 
   const handleVoice = () => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const speechWindow = window as Window & {
+      SpeechRecognition?: SpeechRecognitionConstructorLike;
+      webkitSpeechRecognition?: SpeechRecognitionConstructorLike;
+    };
+    const SR = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
     if (!SR) { alert("Voice not supported. Use Chrome."); return; }
-    const recognition = new SR() as SpeechRecognition;
+    const recognition = new SR();
     recognition.lang           = "en-US";
     recognition.continuous     = false;
     recognition.interimResults = false;
     recognition.onstart  = () => dispatch({ type: "SET_LISTENING", val: true });
     recognition.onend    = () => dispatch({ type: "SET_LISTENING", val: false });
-    recognition.onresult = (e: SpeechRecognitionEvent) => {
+    recognition.onresult = (e: SpeechRecognitionEventLike) => {
       const t = e.results[0][0].transcript;
       dispatch({ type: "SET_INPUT", val: t });
       dispatch({ type: "ADD_MSG", msg: { role: "bot", text: `🎤 I heard: "${t}" — correct? Press Send to confirm or edit above.` } });
